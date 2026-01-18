@@ -1,5 +1,7 @@
+import { Expose } from "class-transformer";
 import { Users } from "src/auth/entities/auth.entity";
 import { Enrollments } from "src/enrollment/entities/enrollment.entity";
+import { Lessons } from "src/lessons/entities/lesson.entity";
 import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 
 export enum CourseLevels {
@@ -29,7 +31,7 @@ export class Courses {
     @Column()
     title: string
 
-    @Column()
+    @Column({type: 'text', nullable: true})
     description: string
 
     @Column({type: 'enum', enum: CourseCategory, default: CourseCategory.OTHER})
@@ -47,6 +49,10 @@ export class Courses {
     @Column({default: false})
     isPublished: boolean
 
+
+     @Column({default: false})
+     isFree: boolean
+
     @Column('decimal',{precision: 10, scale: 2})
     price: number
     
@@ -57,9 +63,15 @@ export class Courses {
     @JoinColumn({name: 'userId'})
     teacher: Users
 
+    @Column()
+    userId: string
+
 
     @OneToMany(() => Enrollments, enrollment => enrollment.course)
     enrollments: Enrollments[]
+
+    @OneToMany(() => Lessons, lessons => lessons.course)
+    lessons: Lessons[]
 
 
     @Column({type: 'varchar', nullable: true})

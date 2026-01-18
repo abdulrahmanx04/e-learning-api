@@ -43,7 +43,7 @@ export class AuthService {
           name: dto.name,
           email: dto.email,
           password: dto.password,
-          role: Role.ADMIN,
+          role: Role.STUDENT,
           verificationToken: hashedToken,
           verificationTokenExpiry: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
         })
@@ -104,9 +104,9 @@ export class AuthService {
     async login(dto: loginDto): Promise<{token: string}> {
         const exists= await this.userRepo.findOneOrFail({where: {email: dto.email}})
 
-        if(!exists.isActive) {
-            throw new BadRequestException('Email verification required')
-        }
+        // if(!exists.isActive) {
+        //     throw new BadRequestException('Email verification required')
+        // }
         const isValid= await bcrypt.compare(dto.password,exists.password)
 
         if(!isValid) {

@@ -9,6 +9,8 @@ import { Users } from './auth/entities/auth.entity';
 import { Courses } from './courses/entities/course.entity';
 import { Enrollments } from './enrollment/entities/enrollment.entity';
 import { CloudinaryModule } from './cloudinary/cloudinary.module';
+import { LessonsModule } from './lessons/lessons.module';
+import { Lessons } from './lessons/entities/lesson.entity';
 dotenv.config()
 @Module({
   imports: [
@@ -19,14 +21,15 @@ dotenv.config()
       username: process.env.DB_USER,
       password: process.env.DB_PASS,
       database: process.env.DB_DATABASE,
-      entities: [Users,Courses,Enrollments],
+      entities: [Users,Courses,Enrollments,Lessons],
       synchronize: true
     }),
     UsersModule,
     AuthModule,
     CoursesModule,
     EnrollmentsModule,
-    CloudinaryModule
+    CloudinaryModule,
+    LessonsModule
   ],
   controllers: [],
   providers: [],

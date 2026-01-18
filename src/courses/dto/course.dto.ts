@@ -1,8 +1,8 @@
 import { Injectable } from "@nestjs/common";
-import { Type } from "class-transformer";
+import { Expose, Transform, Type } from "class-transformer";
 import { IsBoolean, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Length, Min } from "class-validator";
-import { Column } from "typeorm";
 import { CourseCategory, CourseLevels } from "../entities/course.entity";
+import { FileDto } from "src/lessons/dto/lesson.dto";
 
 
 @Injectable()
@@ -11,6 +11,7 @@ export class CreateCourseDto {
     @IsString()
     @Length(3,30)
     title: string
+
 
     @IsNotEmpty()
     @IsString()
@@ -36,13 +37,17 @@ export class CreateCourseDto {
     @Min(1)
     duration?: number
 
+
     @IsOptional()
     @IsBoolean()
+    @Transform(({value}) => value === 'true')
     isPublished?: boolean
 
-    @IsNotEmpty()
-    @IsUUID()
-    userId: string
+    @IsOptional()
+    @IsBoolean()
+    @Transform(({value}) => value === 'true')
+    isFree?: boolean
+
 }
 
 
@@ -78,7 +83,78 @@ export class UpdateCourseDto {
 
     @IsOptional()
     @IsBoolean()
+    @Transform(({value}) => value == 'true')
     isPublished?: boolean
+
+    @IsOptional()
+    @IsBoolean()
+    @Transform(({value}) => value === 'true')
+    isFree?: boolean
+
 
 }
 
+
+export class CourseResponseDto {
+    @Expose()
+    id: string
+
+    @Expose()
+    title: string
+
+    @Expose()
+    description: string
+
+    @Expose()
+    category: CourseCategory
+
+    @Expose()
+    level?: CourseLevels
+
+    @Expose()
+    duration?: number
+
+    @Expose()
+    rating: number
+
+    @Expose()
+    price: number
+    
+    @Expose()
+    isFree: boolean
+
+    @Expose()
+    isPublished?: boolean
+
+    @Expose()
+    thumbnailUrl: string
+
+    @Expose()
+    thumbnailPublicId: string
+
+    @Expose()
+    @Transform(({ obj }) => obj.teacher?.name)
+    teacherName: string;
+
+    @Expose()
+    @Transform(({ obj }) => obj.teacher?.avatar)
+    teacherAvatar: string;
+
+}
+
+
+export class RolesResponseCourseDto extends CourseResponseDto {
+
+    @Expose()
+    @Type(() => FileDto)
+    materials: FileDto[]
+
+    @Expose()
+    enrollmentCount: number
+
+    @Expose()
+    createdAt: Date
+
+    @Expose()
+    updatedAt: Date
+}

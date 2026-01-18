@@ -1,14 +1,15 @@
-import { BadRequestException, Body, Injectable } from '@nestjs/common';
-import { CreateCourseDto } from './dto/course.dto';
+import { BadRequestException, Body, ForbiddenException, Injectable } from '@nestjs/common';
+import { CourseResponseDto, CreateCourseDto, RolesResponseCourseDto } from './dto/course.dto';
 import { UpdateCourseDto } from './dto/course.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Users } from '../auth/entities/auth.entity';
 import { Repository } from 'typeorm';
 import { Courses } from './entities/course.entity';
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
-import { UploadApiResponse } from 'cloudinary';
-import { MaterialsUpload, UserData } from 'src/common/all-interfaces/all-interfaces';
 import { FilterOperator, paginate, PaginateQuery } from 'nestjs-paginate';
+import { uploadFiles } from 'src/common/utils/upload';
+import { UserData } from 'src/common/all-interfaces/all-interfaces';
+import { plainToInstance } from 'class-transformer';
 
 @Injectable()
 export class CoursesService {
@@ -16,71 +17,43 @@ export class CoursesService {
    @InjectRepository(Courses) private courseRepo: Repository<Courses>,
    private cloudinaryService: CloudinaryService
 ) {}
-  
+ 
   async create(createCourseDto: CreateCourseDto,
+    user: UserData,
     files?: {thumbnail?:  Express.Multer.File[], materials?: Express.Multer.File[]}
-  ) {
-    const teacher= await this.userRepo.findOneOrFail({
-      where: {
-        id: createCourseDto.userId
-      }
-    })
+  ): Promise<RolesResponseCourseDto> {
+    
 
-
-    const [thumbnail, materials]: [UploadApiResponse | null, MaterialsUpload[] | []]= await Promise.all([
-      files?.thumbnail?.length
-      ? this.cloudinaryService.uploadFile(files.thumbnail[0],'thumbnail')
-      : null,
-      files?.materials?.length
-        ? Promise.all(
-          files.materials.map(async(file) => {
-            const upload= await this.cloudinaryService.uploadFile(file, 'materials')
-            return {
-              url: upload.secure_url,
-              fileName:upload.display_name,
-              publicId: upload.public_id,
-              size: +(upload.bytes / (1024 * 1024)).toFixed(2)
-            }
-          })
-        )
-      : []
+    const [thumbnailArray,materials]= await Promise.all([
+      uploadFiles(this.cloudinaryService,'thumbnails',files?.thumbnail),
+      uploadFiles(this.cloudinaryService,'materials',files?.materials)
     ])
 
+    const thumbnail= thumbnailArray[0]
+  
     const course= this.courseRepo.create({
       ...createCourseDto,
-      thumbnailUrl: thumbnail?.secure_url,
-      thumbnailPublicId: thumbnail?.public_id,
+      thumbnailUrl: thumbnail?.url,
+      thumbnailPublicId: thumbnail?.publicId,
       materials,
-      teacher
+      userId: user.id
     }) 
 
      await this.courseRepo.save(course)
-
-     return {
-        id: course.id,
-        title: course.title,
-        description: course.description,
-        price: course.price,
-        category: course.category,
-        level: course.level,
-        duration: course.duration,
-        teacher: course.teacher.name,
-        thumbnailUrl: course.thumbnailUrl,
-        materials: course.materials
-     }
+     return plainToInstance(RolesResponseCourseDto,course,{excludeExtraneousValues: true})
   } 
 
-  async findAll(query: PaginateQuery) {
+  async findAll(query: PaginateQuery): Promise<{data: CourseResponseDto[], meta: any}> {
     const courses= await paginate(query,this.courseRepo,{
       sortableColumns: ['createdAt','updatedAt','title','price','rating'],
       searchableColumns: ['title','description','category','level'],
       filterableColumns: {
         price: [FilterOperator.GTE, FilterOperator.LTE, FilterOperator.BTW],
         'teacher.name': [FilterOperator.ILIKE],
-        category: [FilterOperator.EQ,FilterOperator.IN],
-        level: [FilterOperator.EQ,FilterOperator.IN],
+        category: [FilterOperator.IN],
+        level: [FilterOperator.IN],
       },
-      where: {isPublished: true},
+      where: {isPublished: false},
       relations: ['teacher'],
       select: [
         'id',
@@ -102,79 +75,77 @@ export class CoursesService {
       maxLimit: 100,
       defaultSortBy: [['createdAt', 'DESC']]
     })
+    const dataDto= plainToInstance(CourseResponseDto,courses.data,{excludeExtraneousValues: true})
     return {
-      data: courses.data,
-      meta: courses.meta
+      ...courses,
+      data: dataDto
     }
   }
 
-  async findOne(id: string) {
+  async findOne(id: string): Promise<CourseResponseDto> {
     const course= await this.courseRepo.findOneOrFail({
       where: {
-        id
+        id,
+        isPublished: false
       },
       relations: ['teacher']
     }) 
 
-    return {
-        id: course.id,
-        title: course.title,
-        description: course.description,
-        price: course.price,
-        category: course.category,
-        level: course.level,
-        duration: course.duration,
-        teacher: course.teacher.name,
-        thumbnailUrl: course.thumbnailUrl,
-     }
+    return plainToInstance(CourseResponseDto,course,{excludeExtraneousValues: true})
+   
   }
 
   
-  async update(id: string, updateCourseDto: UpdateCourseDto, files?: {
+  async update(id: string, updateCourseDto: UpdateCourseDto, user: UserData,files?: {
     thumbnail?: Express.Multer.File[], materials?: Express.Multer.File[]
-  }) {
-      const course = await this.courseRepo.findOneOrFail({where: {
-        id,
-      }})
+  }): Promise<RolesResponseCourseDto> {
 
-    if(files?.thumbnail?.length) {
-      const upload: UploadApiResponse= await this.cloudinaryService.uploadFile(files.thumbnail[0],'thumbnail')
-      course.thumbnailUrl= upload.secure_url
-      course.thumbnailPublicId= upload.public_id
-    }
+        const course = await this.courseRepo.findOneOrFail({where: {
+          id
+        }})
+        if(course.userId !== user.id && user.role !== 'admin') {
+          throw new ForbiddenException('You cant update this course')
+        }
+        const [thumbnails,materials]= await Promise.all([
+        uploadFiles(this.cloudinaryService,'thumbnail',files?.thumbnail),
+        uploadFiles(this.cloudinaryService,'materials',files?.materials),
+      ])
+        if(thumbnails.length > 0) {
+          const thumbnail= thumbnails[0]
+          course.thumbnailUrl= thumbnail.url
+          course.thumbnailPublicId= thumbnail.publicId
+        }
+        if(materials.length > 0) {
+          course.materials= [...course.materials,...materials]
+        }
 
-    if(files?.materials?.length) {
-      const materials= await Promise.all(
-        files.materials.map(async(file) => {
-          const upload: UploadApiResponse= await this.cloudinaryService.uploadFile(file, 'materials')
-            return {
-              url: upload.secure_url,
-              fileName:upload.display_name,
-              publicId: upload.public_id,
-              size: +(upload.bytes / (1024 * 1024)).toFixed(2)
-            } 
-        })
-      )
-      course.materials= materials
-    }
-    this.courseRepo.merge(course,updateCourseDto)
-    return await this.courseRepo.save(course)
+        Object.assign(course,updateCourseDto)
+
+        await this.courseRepo.save(course)
+
+        const updatedCourse= await this.courseRepo.findOneOrFail({where: {id}})
+
+        return plainToInstance(RolesResponseCourseDto,updatedCourse,{excludeExtraneousValues: true})
+
   }
 
-  async delete(id: string) {
+  async delete(id: string,user: UserData) {
     const course= await this.courseRepo.findOneOrFail({where: {id}})
-
+    if(course.userId !== user.id && user.role !== 'admin') {
+      throw new ForbiddenException('You cant delete this course')
+    }
     if(course.thumbnailPublicId) {
-      await this.cloudinaryService.deleteFile(course.thumbnailPublicId)
+      await this.cloudinaryService.deleteFile(course.thumbnailPublicId,'image')
     }
     if(course.materials?.length) {
       await Promise.all(course.materials?.map(async(file) => {
-        await this.cloudinaryService.deleteFile(file.publicId)
+        const resource_type= file.url.includes('/image/') ? 'image'
+        : file.url.includes('/video/') ?  'video'
+        : 'raw'
+        await this.cloudinaryService.deleteFile(file.publicId,resource_type)
       }))
     }
-
     await this.courseRepo.remove(course)
-
     return
   }
 }

@@ -93,7 +93,7 @@ export class UsersService {
         }
 
         if(user.avatarPublicId) {
-            await this.cloudinaryService.deleteFile(user.avatarPublicId)
+            await this.cloudinaryService.deleteFile(user.avatarPublicId,'image')
         }
         await this.userRepo.delete({id: userData.id})
 

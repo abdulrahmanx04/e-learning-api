@@ -54,10 +54,11 @@ export class CloudinaryService {
       })
   }
 
-  async deleteFile(public_id: string) {
-    const result= await cloudinary.uploader.destroy(public_id)
-    if(result.result !== 'ok') {
-        throw new BadRequestException('File delete failed')
-    }
+  async deleteFile(public_id: string, resource_type: 'image' | 'video' | 'raw') {
+      
+      const result = await cloudinary.uploader.destroy(public_id, {resource_type});
+      if(result.result !== 'ok' && result.result !== 'not found') {
+          throw new BadRequestException(`File delete failed: ${result.result}`);
+      }
   }
 }

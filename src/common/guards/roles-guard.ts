@@ -8,7 +8,7 @@ import { AuthRequest } from "../all-interfaces/all-interfaces";
 export class RolesGuard implements CanActivate {
     constructor(private reflector: Reflector) {}
     canActivate(context: ExecutionContext): boolean | Promise<boolean> | Observable<boolean> {
-        const requiredRoles= this.reflector.getAllAndOverride<string[]>('roles',[context.getHandler()])
+        const requiredRoles= this.reflector.getAllAndOverride<string[]>('roles',[context.getHandler(),context.getClass()])
 
         const request= context.switchToHttp().getRequest<AuthRequest>()
 
