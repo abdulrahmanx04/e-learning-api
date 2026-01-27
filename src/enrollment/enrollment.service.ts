@@ -30,10 +30,9 @@ export class EnrollmentService {
   async findAll( query: PaginateQuery, user: UserData): Promise<{data: EnrollResponseDto[], meta: any}> {
     const enrolls= await paginate(query,this.enrollRepo,{
       sortableColumns: ['createdAt','updatedAt','status'],
-      searchableColumns: ['course.title','status'],
+      searchableColumns: ['course.title','status','course.instructor.name'],
       filterableColumns: {
         status: [FilterOperator.IN],
-        progressPercentage: [FilterOperator.GTE, FilterOperator.LTE, FilterOperator.BTW],
       },
       defaultLimit: 10,
       maxLimit: 100,

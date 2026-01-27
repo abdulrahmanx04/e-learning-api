@@ -48,6 +48,10 @@ export class AuthService {
             }
         })
 
+        if (userExists.pendingEmail) {
+            await this.verifyNewEmail(userExists)
+        }
+
         userExists.isActive= true
         userExists.verificationToken=null
         userExists.verificationTokenExpiry=null
@@ -179,5 +183,15 @@ export class AuthService {
             verificationToken: hashedToken,
             verificationTokenExpiry: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
         })
+   }
+   private async verifyNewEmail(userExists: Users) {
+        if(userExists.pendingEmail) {
+            const taken= await this.userRepo.findOneBy({email : userExists.pendingEmail})
+            if(taken && taken.id !== userExists.id) {
+                throw new BadRequestException('Email already used')
+            }
+            userExists.email= userExists.pendingEmail
+            userExists.pendingEmail= null
+     }
    }
 }

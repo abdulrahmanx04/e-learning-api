@@ -54,7 +54,7 @@ export class CloudinaryService {
       })
   }
 
-  async deleteFile(public_id: string, resource_type: 'image' | 'video' | 'raw') {
+  async deleteFile(public_id: string, resource_type?: 'image' | 'video' | 'raw') {
       
       const result = await cloudinary.uploader.destroy(public_id, {resource_type});
       if(result.result !== 'ok' && result.result !== 'not found') {

@@ -21,6 +21,9 @@ export class Users {
     @Column({unique: true})
     email: string
 
+    @Column({type: 'varchar', nullable: true})
+    pendingEmail: string | null
+
     @Column()
     password: string
     @BeforeInsert()
@@ -34,6 +37,14 @@ export class Users {
 
     @Column({default: false})
     isActive: boolean
+
+    @Column({default: false})
+    isBanned: boolean
+
+    @Column({type: 'date', nullable: true})
+    bannedAt: Date
+
+
 
     @Column({type: 'varchar', nullable: true})
     avatar: string | null

@@ -20,8 +20,9 @@ export class CreateCourseDto {
     description: string
 
     @IsNotEmpty()
-    @Min(1)
     @Type(() => Number)
+    @Min(1)
+    @IsNumber()
     price: number
 
     @IsOptional()
@@ -138,6 +139,9 @@ export class RolesResponseCourseDto extends CourseResponseDto {
     @Expose()
     @Type(() => FileDto)
     materials: FileDto[]
+
+    @Expose()
+    isPublished: boolean
 
     @Expose()
     enrollmentCount: number

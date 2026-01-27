@@ -17,6 +17,7 @@ import { ConfigModule } from '@nestjs/config';
 import { Payment } from './payments/entities/payment.entity';
 import { ProgressModule } from './progress/progress.module';
 import { LessonProgress } from './progress/entities/progress.entity';
+import { AdminModule } from './admin/admin.module';
 dotenv.config()
 @Module({
   imports: [
@@ -40,6 +41,7 @@ dotenv.config()
     PaymentsModule,
     StripeModule,
     ProgressModule,
+    AdminModule,
   ],
   controllers: [],
   providers: [],
